@@ -1,4 +1,4 @@
 DB_HOST = "iot.cpe.ku.ac.th"
 DB_USER = "username"
 DB_PASSWD = "Password"
-DB_NAME = "name"
+DB_NAME = "bstudentid"
