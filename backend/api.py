@@ -50,3 +50,17 @@ class project_weather_api(BaseModel):
     temp:float
     windspeed:float
 
+def get_sensor_data():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("""
+        SELECT id, ts, temp_dht, humidity, pm1, pm25, pm10
+        FROM your_table_name
+    """)
+    
+    data = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return data
