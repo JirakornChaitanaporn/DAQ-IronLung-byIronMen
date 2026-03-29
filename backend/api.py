@@ -45,18 +45,67 @@ class project_weather_api(BaseModel):
     ts: datetime
     lat: float
     lon: float
-    humidity:int
+    humid:int
     rainfall:int
     temp:float
     windspeed:float
 
-def get_sensor_data():
+@app.get("/outdoor")
+def get_kidbright_outdoor_data():
     conn = pool.connection()
     cursor = conn.cursor(pymysql.cursors.DictCursor)
 
     cursor.execute("""
         SELECT id, ts, temp_dht, humidity, pm1, pm25, pm10
-        FROM your_table_name
+        FROM project_kidbright_outdoor
+    """)
+    
+    data = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return data
+
+@app.get("/indoor")
+def get_kidbright_outdoor_data():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("""
+        SELECT id, ts, temp_dht, humidity, pm1, pm25, pm10
+        FROM project_kidbright_indoor
+    """)
+    
+    data = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return data
+
+@app.get("/aqi_api")
+def get_aqi_api():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("""
+        SELECT lat, lon, aqi
+        FROM project_aqi_api
+    """)
+    
+    data = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return data
+
+@app.get("/weather_api")
+def get_weather_api():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("""
+        SELECT lat, lon, humid, rainfall, temp, windspeed
+        FROM project_weather_api
     """)
     
     data = cursor.fetchall()
