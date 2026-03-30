@@ -59,7 +59,7 @@ def get_kidbright_outdoor_data():
         SELECT id, ts, temp_dht, humidity, pm1, pm25, pm10
         FROM project_kidbright_outdoor
     """)
-    
+
     data = cursor.fetchall()
 
     cursor.close()
