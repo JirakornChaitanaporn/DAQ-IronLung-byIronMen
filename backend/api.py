@@ -1,6 +1,7 @@
 import pymysql
 from dbutils.pooled_db import PooledDB
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from db_config import DB_HOST, DB_USER, DB_PASSWD, DB_NAME
 from datetime import datetime, date
@@ -14,6 +15,13 @@ pool = PooledDB(creator=pymysql,
                 blocking=True)
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
 
 class project_aqi_api(BaseModel):
     id: int

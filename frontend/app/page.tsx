@@ -1,16 +1,7 @@
 import Navbar from "@/components/Navbar";
-import SensorPanel from "@/components/SensorPanel";
-import AirChart from "@/components/AirChart";
-import WeatherWidget from "@/components/WeatherWidget";
-import AqiWidget from "@/components/AqiWidget";
-import {
-  indoorSensor,
-  outdoorSensor,
-  aqiData,
-  weatherData,
-  historicalIndoor,
-  historicalOutdoor,
-} from "@/lib/fakeData";
+import LiveSensorPanels from "@/components/LiveSensorPanels";
+import DataCharts from "@/components/DataCharts";
+import LiveWidgets from "@/components/LiveWidgets";
 
 export default function Home() {
   return (
@@ -28,21 +19,19 @@ export default function Home() {
 
         {/* Sensor panels */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <SensorPanel label="Indoor" data={indoorSensor} />
-          <SensorPanel label="Outdoor" data={outdoorSensor} />
+          <LiveSensorPanels />
         </div>
 
-        {/* Chart */}
-        <AirChart indoorData={historicalIndoor} outdoorData={historicalOutdoor} />
+        {/* Tabbed API Charts */}
+        <DataCharts />
 
         {/* Weather + AQI */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <WeatherWidget data={weatherData} />
-          <AqiWidget data={aqiData} />
+          <LiveWidgets />
         </div>
 
         {/* Recommendation banner */}
-        <Recommendation indoorPm25={indoorSensor.pm25} outdoorPm25={outdoorSensor.pm25} />
+        {/* <Recommendation indoorPm25={indoorSensor.pm25} outdoorPm25={outdoorSensor.pm25} /> */}
       </main>
     </div>
   );
