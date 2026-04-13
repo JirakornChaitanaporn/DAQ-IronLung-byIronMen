@@ -1,4 +1,0 @@
-DB_HOST = "iot.cpe.ku.ac.th"
-DB_USER = "bstudentid"
-DB_PASSWD = "Password"
-DB_NAME = "bstudentid"
