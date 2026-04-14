@@ -5,6 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from db_config import DB_HOST, DB_USER, DB_PASSWD, DB_NAME
 from datetime import datetime, date
+from models.pm1_predictor import predict as predict_pm1_random_forest
+from models.pm10_predictor import predict as predict_pm10_random_forest
+from models.pm25_predictor import predict as predict_pm25_random_forest
 
 pool = PooledDB(creator=pymysql,
                 host=DB_HOST,
@@ -58,6 +61,74 @@ class project_weather_api(BaseModel):
     temp:float
     windspeed:float
 
+@app.get("/predicted_pm1_random_forest")
+def get_predicted1():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("SELECT temp_dht, pm1 FROM project_kidbright_outdoor ORDER BY id DESC LIMIT 1")
+    outdoor = cursor.fetchone()
+
+    cursor.execute("SELECT humid, rainfall, temp, windspeed FROM project_weather_api ORDER BY id DESC LIMIT 1")
+    weather = cursor.fetchone()
+
+    cursor.execute("SELECT aqi FROM project_aqi_api ORDER BY id DESC LIMIT 1")
+    aqi = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+    now = datetime.now()
+
+    ts = now.strftime("%Y-%m-%d %H:%M:%S")
+    
+    return {"ts": ts,"pm1": round(predict_pm1_random_forest(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+
+@app.get("/predicted_pm10_random_forest")
+def get_predicted10():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("SELECT temp_dht, pm10 FROM project_kidbright_outdoor ORDER BY id DESC LIMIT 1")
+    outdoor = cursor.fetchone()
+
+    cursor.execute("SELECT humid, rainfall, temp, windspeed FROM project_weather_api ORDER BY id DESC LIMIT 1")
+    weather = cursor.fetchone()
+
+    cursor.execute("SELECT aqi FROM project_aqi_api ORDER BY id DESC LIMIT 1")
+    aqi = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+    now = datetime.now()
+
+    ts = now.strftime("%Y-%m-%d %H:%M:%S")
+    
+    return {"ts": ts,"pm10": round(predict_pm10_random_forest(outdoor["pm10"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+
+
+@app.get("/predicted_pm25_random_forest")
+def get_predicted25():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("SELECT temp_dht, pm25 FROM project_kidbright_outdoor ORDER BY id DESC LIMIT 1")
+    outdoor = cursor.fetchone()
+
+    cursor.execute("SELECT humid, rainfall, temp, windspeed FROM project_weather_api ORDER BY id DESC LIMIT 1")
+    weather = cursor.fetchone()
+
+    cursor.execute("SELECT aqi FROM project_aqi_api ORDER BY id DESC LIMIT 1")
+    aqi = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+    now = datetime.now()
+
+    ts = now.strftime("%Y-%m-%d %H:%M:%S")
+    
+    return {"ts": ts,"pm25": round(predict_pm25_random_forest(outdoor["pm25"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+    
+
 @app.get("/outdoor")
 def get_kidbright_outdoor_data():
     conn = pool.connection()
@@ -73,6 +144,7 @@ def get_kidbright_outdoor_data():
     cursor.close()
     conn.close()
     return data
+
 @app.get("/outdoor_last_24hour")
 def get_kidbright_outdoor_last_24hour():
     conn = pool.connection()
