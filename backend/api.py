@@ -5,12 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from db_config import DB_HOST, DB_USER, DB_PASSWD, DB_NAME
 from datetime import datetime, date
-from models.pm1_predictor import predict as predict_pm1_random_forest
-from models.pm10_predictor import predict as predict_pm10_random_forest
-from models.pm25_predictor import predict as predict_pm25_random_forest
-from models.pm1_predictor_lr import predict as predict_pm1_linear_regression
-from models.pm10_predictor_lr import predict as predict_pm10_linear_regression
-from models.pm25_predictor_lr import predict as predict_pm25_linear_regression
+from predict import IndoorPredictorRF, IndoorPredictorLR
 
 pool = PooledDB(creator=pymysql,
                 host=DB_HOST,
@@ -21,6 +16,10 @@ pool = PooledDB(creator=pymysql,
                 blocking=True)
 
 app = FastAPI()
+
+# Initialize singleton predictors (cached globally)
+rf_predictor = IndoorPredictorRF()
+lr_predictor = IndoorPredictorLR()
 
 app.add_middleware(
     CORSMiddleware,
@@ -84,7 +83,8 @@ def get_predicted1():
 
     ts = now.strftime("%Y-%m-%d %H:%M:%S")
     
-    return {"ts": ts,"pm1": round(predict_pm1_random_forest(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+    # Use cached singleton predictor (models loaded once)
+    return {"ts": ts,"pm1": round(rf_predictor.predict_pm1(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
 
 @app.get("/predicted_pm10_random_forest")
 def get_predicted10():
@@ -106,7 +106,8 @@ def get_predicted10():
 
     ts = now.strftime("%Y-%m-%d %H:%M:%S")
     
-    return {"ts": ts,"pm10": round(predict_pm10_random_forest(outdoor["pm10"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+    # Use cached singleton predictor (models loaded once)
+    return {"ts": ts,"pm10": round(rf_predictor.predict_pm10(outdoor["pm10"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
 
 
 @app.get("/predicted_pm25_random_forest")
@@ -129,7 +130,8 @@ def get_predicted25():
 
     ts = now.strftime("%Y-%m-%d %H:%M:%S")
     
-    return {"ts": ts,"pm25": round(predict_pm25_random_forest(outdoor["pm25"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+    # Use cached singleton predictor (models loaded once)
+    return {"ts": ts,"pm25": round(rf_predictor.predict_pm25(outdoor["pm25"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
     
 
 @app.get("/outdoor")
@@ -287,7 +289,8 @@ def get_predicted1_lr():
 
     ts = now.strftime("%Y-%m-%d %H:%M:%S")
     
-    return {"ts": ts, "pm1": round(predict_pm1_linear_regression(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+    # Use cached singleton predictor (models loaded once)
+    return {"ts": ts, "pm1": round(lr_predictor.predict_pm1(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
 
 
 @app.get("/predicted_pm10_linear_regression")
@@ -310,7 +313,8 @@ def get_predicted10_lr():
 
     ts = now.strftime("%Y-%m-%d %H:%M:%S")
     
-    return {"ts": ts, "pm10": round(predict_pm10_linear_regression(outdoor["pm10"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+    # Use cached singleton predictor (models loaded once)
+    return {"ts": ts, "pm10": round(lr_predictor.predict_pm10(outdoor["pm10"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
 
 
 @app.get("/predicted_pm25_linear_regression")
@@ -333,5 +337,9 @@ def get_predicted25_lr():
 
     ts = now.strftime("%Y-%m-%d %H:%M:%S")
     
-    return {"ts": ts, "pm25": round(predict_pm25_linear_regression(outdoor["pm25"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
-    return data
+    # Use cached singleton predictor (models loaded once)
+    return {"ts": ts, "pm25": round(lr_predictor.predict_pm25(outdoor["pm25"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+
+@app.get("/suggestion")
+def suggestion():
+    pass

@@ -15,6 +15,41 @@ FEATURES = ["pm10_outdoor", "windspeed", "aqi", "temp_outdoor", "humid"]
 TARGET = "pm10_indoor"
 
 
+class PM10LRPredictorSingleton(type):
+    """Metaclass for singleton PM10 LR predictor with cached model and scaler"""
+    _instances = {}
+
+    def __call__(cls):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(PM10LRPredictorSingleton, cls).__call__()
+        return cls._instances[cls]
+
+
+class PM10LRPredictor(metaclass=PM10LRPredictorSingleton):
+    """Singleton LinearRegression predictor for PM10 with cached model and scaler"""
+    def __init__(self):
+        self._model = None
+        self._scaler = None
+
+    def _load_model_and_scaler(self):
+        """Load model and scaler from disk (only once)"""
+        if self._model is None or self._scaler is None:
+            if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
+                raise FileNotFoundError(
+                    "Model or scaler not found. Run train() first."
+                )
+            self._model = joblib.load(MODEL_PATH)
+            self._scaler = joblib.load(SCALER_PATH)
+        return self._model, self._scaler
+
+    def predict(self, pm10_outdoor: float, windspeed: float, aqi: float, temp_outdoor: float, humid: float) -> float:
+        """Predict PM10 indoor level using cached model and scaler"""
+        model, scaler = self._load_model_and_scaler()
+        features = np.array([[pm10_outdoor, windspeed, aqi, temp_outdoor, humid]])
+        features_scaled = scaler.transform(features)
+        return float(model.predict(features_scaled)[0])
+
+
 def load_and_preprocess_data() -> tuple[np.ndarray, np.ndarray, StandardScaler]:
     """Load data, handle missing values, and create scaler"""
     df = pd.read_csv(DATA_PATH)
@@ -69,20 +104,9 @@ def train() -> dict:
 
 
 def predict(pm10_outdoor: float, windspeed: float, aqi: float, temp_outdoor: float, humid: float) -> float:
-    """Predict PM10 indoor level using normalized features"""
-    if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
-        raise FileNotFoundError(
-            "Model or scaler not found. Run pm10_predictor_lr.train() first."
-        )
-    
-    model = joblib.load(MODEL_PATH)
-    scaler = joblib.load(SCALER_PATH)
-    
-    # Create feature array and normalize using the fitted scaler
-    features = np.array([[pm10_outdoor, windspeed, aqi, temp_outdoor, humid]])
-    features_scaled = scaler.transform(features)
-    
-    return float(model.predict(features_scaled)[0])
+    """Legacy function for backward compatibility. Use PM10LRPredictor singleton directly."""
+    predictor = PM10LRPredictor()
+    return predictor.predict(pm10_outdoor, windspeed, aqi, temp_outdoor, humid)
 
 
 if __name__ == "__main__":

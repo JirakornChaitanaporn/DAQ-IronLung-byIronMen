@@ -13,6 +13,37 @@ FEATURES = ["pm25_outdoor", "windspeed", "aqi", "temp_outdoor", "humid"]
 TARGET = "pm25_indoor"
 
 
+class PM25PredictorSingleton(type):
+    """Metaclass for singleton PM25 predictor with cached model"""
+    _instances = {}
+
+    def __call__(cls):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(PM25PredictorSingleton, cls).__call__()
+        return cls._instances[cls]
+
+
+class PM25Predictor(metaclass=PM25PredictorSingleton):
+    """Singleton RandomForest predictor for PM25 with cached model"""
+    def __init__(self):
+        self._model = None
+
+    def _load_model(self):
+        """Load model from disk (only once)"""
+        if self._model is None:
+            if not os.path.exists(MODEL_PATH):
+                raise FileNotFoundError(
+                    "Model not found. Run train() first."
+                )
+            self._model = joblib.load(MODEL_PATH)
+        return self._model
+
+    def predict(self, pm25_outdoor: float, windspeed: float, aqi: float, temp_outdoor: float, humid: float) -> float:
+        """Predict PM25 indoor level using cached model"""
+        model = self._load_model()
+        return float(model.predict([[pm25_outdoor, windspeed, aqi, temp_outdoor, humid]])[0])
+
+
 def load_data() -> tuple[np.ndarray, np.ndarray]:
     df = pd.read_csv(DATA_PATH)
     df = df[FEATURES + [TARGET]].dropna()
@@ -55,12 +86,9 @@ def train() -> dict:
 
 
 def predict(pm25_outdoor: float, windspeed: float, aqi: float, temp_outdoor: float, humid: float) -> float:
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(
-            "Model not found. Run pm25_predictor.train() first."
-        )
-    model = joblib.load(MODEL_PATH)
-    return float(model.predict([[pm25_outdoor, windspeed, aqi, temp_outdoor, humid]])[0])
+    """Legacy function for backward compatibility. Use PM25Predictor singleton directly."""
+    predictor = PM25Predictor()
+    return predictor.predict(pm25_outdoor, windspeed, aqi, temp_outdoor, humid)
 
 
 if __name__ == "__main__":

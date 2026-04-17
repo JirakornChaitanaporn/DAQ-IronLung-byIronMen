@@ -1,5 +1,9 @@
 class Advise:
     @classmethod
+    def suggest():
+        pass
+    
+    @classmethod
     def indoor_better():
         pass
     
