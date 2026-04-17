@@ -13,9 +13,6 @@ FEATURES = ["pm10_outdoor", "windspeed", "aqi", "temp_outdoor", "humid"]
 TARGET = "pm10_indoor"
 
 
-
-
-
 def load_data() -> tuple[np.ndarray, np.ndarray]:
     df = pd.read_csv(DATA_PATH)
     df = df[FEATURES + [TARGET]].dropna()

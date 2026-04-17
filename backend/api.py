@@ -346,7 +346,7 @@ def suggestion():
     conn = pool.connection()
     cursor = conn.cursor(pymysql.cursors.DictCursor)
 
-    cursor.execute("SELECT temp_dht, pm25 FROM project_kidbright_outdoor ORDER BY id DESC LIMIT 1")
+    cursor.execute("SELECT temp_dht, pm25 , pm1, pm10 FROM project_kidbright_outdoor ORDER BY id DESC LIMIT 1")
     outdoor = cursor.fetchone()
 
     cursor.execute("SELECT humid, rainfall, temp, windspeed FROM project_weather_api ORDER BY id DESC LIMIT 1")
@@ -361,11 +361,11 @@ def suggestion():
 
     ts = now.strftime("%Y-%m-%d %H:%M:%S")
     
-    indoor_pm1 = round(rf_predictor.predict_pm1(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))
-    indoor_pm10 = round(rf_predictor.predict_pm10(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))
-    indoor_pm125 = round(rf_predictor.predict_pm25(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))
+    indoor_pm1 = round(lr_predictor.predict_pm1(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))
+    indoor_pm10 = round(lr_predictor.predict_pm10(outdoor["pm10"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))
+    indoor_pm125 = round(lr_predictor.predict_pm25(outdoor["pm25"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))
     
     indoor_dust_list = [indoor_pm1, indoor_pm10, indoor_pm125]
-    outdoor_dust_list = [outdoor["pm1"], outdoor["pm10"]], outdoor["pm25"]
+    outdoor_dust_list = [outdoor["pm1"], outdoor["pm10"], outdoor["pm25"]]
     
     return {"ts":ts ,"Suggestion":Suggest.suggest(indoor_dust_list, outdoor_dust_list)}
