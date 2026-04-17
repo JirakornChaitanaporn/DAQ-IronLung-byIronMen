@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from db_config import DB_HOST, DB_USER, DB_PASSWD, DB_NAME
 from datetime import datetime, date
-from predict import IndoorPredictorRF, IndoorPredictorLR
+from predict import IndoorPredictor, IndoorPredictorLR
+from suggestion import Suggest
 
 pool = PooledDB(creator=pymysql,
                 host=DB_HOST,
@@ -18,7 +19,7 @@ pool = PooledDB(creator=pymysql,
 app = FastAPI()
 
 # Initialize singleton predictors (cached globally)
-rf_predictor = IndoorPredictorRF()
+rf_predictor = IndoorPredictor()
 lr_predictor = IndoorPredictorLR()
 
 app.add_middleware(
@@ -342,4 +343,29 @@ def get_predicted25_lr():
 
 @app.get("/suggestion")
 def suggestion():
-    pass
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("SELECT temp_dht, pm25 FROM project_kidbright_outdoor ORDER BY id DESC LIMIT 1")
+    outdoor = cursor.fetchone()
+
+    cursor.execute("SELECT humid, rainfall, temp, windspeed FROM project_weather_api ORDER BY id DESC LIMIT 1")
+    weather = cursor.fetchone()
+
+    cursor.execute("SELECT aqi FROM project_aqi_api ORDER BY id DESC LIMIT 1")
+    aqi = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+    now = datetime.now()
+
+    ts = now.strftime("%Y-%m-%d %H:%M:%S")
+    
+    indoor_pm1 = round(rf_predictor.predict_pm1(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))
+    indoor_pm10 = round(rf_predictor.predict_pm10(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))
+    indoor_pm125 = round(rf_predictor.predict_pm25(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))
+    
+    indoor_dust_list = [indoor_pm1, indoor_pm10, indoor_pm125]
+    outdoor_dust_list = [outdoor["pm1"], outdoor["pm10"]], outdoor["pm25"]
+    
+    return {"ts":ts ,"Suggestion":Suggest.suggest(indoor_dust_list, outdoor_dust_list)}

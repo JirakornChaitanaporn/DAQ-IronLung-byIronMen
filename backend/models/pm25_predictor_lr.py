@@ -15,39 +15,81 @@ FEATURES = ["pm25_outdoor", "windspeed", "aqi", "temp_outdoor", "humid"]
 TARGET = "pm25_indoor"
 
 
-class PM25LRPredictorSingleton(type):
-    """Metaclass for singleton PM25 LR predictor with cached model and scaler"""
-    _instances = {}
+def load_and_preprocess_data() -> tuple[np.ndarray, np.ndarray, StandardScaler]:
+    """Load data, handle missing values, and create scaler"""
+    df = pd.read_csv(DATA_PATH)
+    
+    # Select features and target, drop NaN values
+    df = df[FEATURES + [TARGET]].dropna()
+    
+    # Drop rows where sensor readings are zero (sensor dropout)
+    df = df[(df["pm25_outdoor"] > 0) & (df[TARGET] > 0)]
+    
+    X = df[FEATURES].values
+    y = df[TARGET].values
+    
+    # Normalize features using StandardScaler
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    return X_scaled, y, scaler
 
-    def __call__(cls):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(PM25LRPredictorSingleton, cls).__call__()
-        return cls._instances[cls]
+
+def train() -> dict:
+    """Train linear regression model with normalized features"""
+    X_scaled, y, scaler = load_and_preprocess_data()
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_scaled, y, test_size=0.2, random_state=42
+    )
+
+    # Use Linear Regression with normalized features
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_test)
+    metrics = {
+        "mae": round(mean_absolute_error(y_test, y_pred), 4),
+        "rmse": round(root_mean_squared_error(y_test, y_pred), 4),
+        "r2": round(r2_score(y_test, y_pred), 4),
+        "train_samples": len(X_train),
+        "test_samples": len(X_test),
+    }
+
+    # Save both model and scaler
+    joblib.dump(model, MODEL_PATH)
+    joblib.dump(scaler, SCALER_PATH)
+    
+    print(f"Model saved to {MODEL_PATH}")
+    print(f"Scaler saved to {SCALER_PATH}")
+    print(f"MAE:  {metrics['mae']}")
+    print(f"RMSE: {metrics['rmse']}")
+    print(f"R²:   {metrics['r2']}")
+    return metrics
 
 
-class PM25LRPredictor(metaclass=PM25LRPredictorSingleton):
-    """Singleton LinearRegression predictor for PM25 with cached model and scaler"""
-    def __init__(self):
-        self._model = None
-        self._scaler = None
+def predict(pm25_outdoor: float, windspeed: float, aqi: float, temp_outdoor: float, humid: float) -> float:
+    """Predict PM25 indoor level using normalized features"""
+    if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
+        raise FileNotFoundError(
+            "Model or scaler not found. Run pm25_predictor_lr.train() first."
+        )
+    
+    model = joblib.load(MODEL_PATH)
+    scaler = joblib.load(SCALER_PATH)
+    
+    # Create feature array and normalize using the fitted scaler
+    features = np.array([[pm25_outdoor, windspeed, aqi, temp_outdoor, humid]])
+    features_scaled = scaler.transform(features)
+    
+    return float(model.predict(features_scaled)[0])
 
-    def _load_model_and_scaler(self):
-        """Load model and scaler from disk (only once)"""
-        if self._model is None or self._scaler is None:
-            if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
-                raise FileNotFoundError(
-                    "Model or scaler not found. Run train() first."
-                )
-            self._model = joblib.load(MODEL_PATH)
-            self._scaler = joblib.load(SCALER_PATH)
-        return self._model, self._scaler
 
-    def predict(self, pm25_outdoor: float, windspeed: float, aqi: float, temp_outdoor: float, humid: float) -> float:
-        """Predict PM25 indoor level using cached model and scaler"""
-        model, scaler = self._load_model_and_scaler()
-        features = np.array([[pm25_outdoor, windspeed, aqi, temp_outdoor, humid]])
-        features_scaled = scaler.transform(features)
-        return float(model.predict(features_scaled)[0])
+if __name__ == "__main__":
+    train()
+
+
+
 
 
 def load_and_preprocess_data() -> tuple[np.ndarray, np.ndarray, StandardScaler]:
@@ -104,9 +146,20 @@ def train() -> dict:
 
 
 def predict(pm25_outdoor: float, windspeed: float, aqi: float, temp_outdoor: float, humid: float) -> float:
-    """Legacy function for backward compatibility. Use PM25LRPredictor singleton directly."""
-    predictor = PM25LRPredictor()
-    return predictor.predict(pm25_outdoor, windspeed, aqi, temp_outdoor, humid)
+    """Predict PM25 indoor level using normalized features"""
+    if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
+        raise FileNotFoundError(
+            "Model or scaler not found. Run pm25_predictor_lr.train() first."
+        )
+    
+    model = joblib.load(MODEL_PATH)
+    scaler = joblib.load(SCALER_PATH)
+    
+    # Create feature array and normalize using the fitted scaler
+    features = np.array([[pm25_outdoor, windspeed, aqi, temp_outdoor, humid]])
+    features_scaled = scaler.transform(features)
+    
+    return float(model.predict(features_scaled)[0])
 
 
 if __name__ == "__main__":
