@@ -151,6 +151,24 @@ def get_kidbright_outdoor_data():
     conn.close()
     return data
 
+@app.get("/outdoor_last_hour")
+def get_kidbright_outdoor_last_hour():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("""
+        SELECT id, ts, temp_dht, pm1, pm25, pm10
+        FROM project_kidbright_outdoor
+        WHERE ts >= NOW() - INTERVAL 1 HOUR
+        ORDER BY ts ASC;
+    """)
+
+    data = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return data
+
 @app.get("/outdoor_last_24hour")
 def get_kidbright_outdoor_last_24hour():
     conn = pool.connection()
@@ -159,7 +177,8 @@ def get_kidbright_outdoor_last_24hour():
     cursor.execute("""
         SELECT id, ts, temp_dht, pm1, pm25, pm10
         FROM project_kidbright_outdoor
-        WHERE ts >= NOW() - INTERVAL HOUR;
+        WHERE ts >= NOW() - INTERVAL 24 HOUR
+        ORDER BY ts ASC;
     """)
 
     data = cursor.fetchall()
@@ -185,6 +204,24 @@ def get_kidbright_indoor_data():
     conn.close()
     return data
 
+@app.get("/indoor_last_hour")
+def get_kidbright_indoor_last_hour():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("""
+        SELECT id, ts, temp_dht, pm1, pm25, pm10
+        FROM project_kidbright_indoor
+        WHERE ts >= NOW() - INTERVAL 1 HOUR
+        ORDER BY ts ASC;
+    """)
+
+    data = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return data
+
 @app.get("/indoor_last_24hour")
 def get_kidbright_indoor_last_24hour():
     conn = pool.connection()
@@ -193,9 +230,10 @@ def get_kidbright_indoor_last_24hour():
     cursor.execute("""
         SELECT id, ts, temp_dht, pm1, pm25, pm10
         FROM project_kidbright_indoor
-        WHERE ts >= NOW() - INTERVAL 24 HOUR;
+        WHERE ts >= NOW() - INTERVAL 24 HOUR
+        ORDER BY ts ASC;
     """)
-    
+
     data = cursor.fetchall()
 
     cursor.close()
