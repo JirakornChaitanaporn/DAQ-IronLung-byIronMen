@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "merged_all_table.csv")
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "pm1_model.joblib")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "trained_models/pm1_model.joblib")
 
 FEATURES = ["pm1_outdoor", "windspeed", "aqi", "temp_outdoor", "humid"]
 TARGET = "pm1_indoor"

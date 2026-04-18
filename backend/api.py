@@ -5,9 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from db_config import DB_HOST, DB_USER, DB_PASSWD, DB_NAME
 from datetime import datetime, date
-from models.pm1_predictor import predict as predict_pm1_random_forest
-from models.pm10_predictor import predict as predict_pm10_random_forest
-from models.pm25_predictor import predict as predict_pm25_random_forest
+from predict import IndoorPredictor, IndoorPredictorLR
+from suggestion import Suggest
 
 pool = PooledDB(creator=pymysql,
                 host=DB_HOST,
@@ -18,6 +17,10 @@ pool = PooledDB(creator=pymysql,
                 blocking=True)
 
 app = FastAPI()
+
+# Initialize singleton predictors (cached globally)
+rf_predictor = IndoorPredictor()
+lr_predictor = IndoorPredictorLR()
 
 app.add_middleware(
     CORSMiddleware,
@@ -81,7 +84,8 @@ def get_predicted1():
 
     ts = now.strftime("%Y-%m-%d %H:%M:%S")
     
-    return {"ts": ts,"pm1": round(predict_pm1_random_forest(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+    # Use cached singleton predictor (models loaded once)
+    return {"ts": ts,"pm1": round(rf_predictor.predict_pm1(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
 
 @app.get("/predicted_pm10_random_forest")
 def get_predicted10():
@@ -103,7 +107,8 @@ def get_predicted10():
 
     ts = now.strftime("%Y-%m-%d %H:%M:%S")
     
-    return {"ts": ts,"pm10": round(predict_pm10_random_forest(outdoor["pm10"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+    # Use cached singleton predictor (models loaded once)
+    return {"ts": ts,"pm10": round(rf_predictor.predict_pm10(outdoor["pm10"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
 
 
 @app.get("/predicted_pm25_random_forest")
@@ -126,7 +131,8 @@ def get_predicted25():
 
     ts = now.strftime("%Y-%m-%d %H:%M:%S")
     
-    return {"ts": ts,"pm25": round(predict_pm25_random_forest(outdoor["pm25"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+    # Use cached singleton predictor (models loaded once)
+    return {"ts": ts,"pm25": round(rf_predictor.predict_pm25(outdoor["pm25"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
     
 
 @app.get("/outdoor")
@@ -262,3 +268,104 @@ def get_weather_api_last_24hour():
     cursor.close()
     conn.close()
     return data
+
+
+@app.get("/predicted_pm1_linear_regression")
+def get_predicted1_lr():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("SELECT temp_dht, pm1 FROM project_kidbright_outdoor ORDER BY id DESC LIMIT 1")
+    outdoor = cursor.fetchone()
+
+    cursor.execute("SELECT humid, rainfall, temp, windspeed FROM project_weather_api ORDER BY id DESC LIMIT 1")
+    weather = cursor.fetchone()
+
+    cursor.execute("SELECT aqi FROM project_aqi_api ORDER BY id DESC LIMIT 1")
+    aqi = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+    now = datetime.now()
+
+    ts = now.strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Use cached singleton predictor (models loaded once)
+    return {"ts": ts, "pm1": round(lr_predictor.predict_pm1(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+
+
+@app.get("/predicted_pm10_linear_regression")
+def get_predicted10_lr():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("SELECT temp_dht, pm10 FROM project_kidbright_outdoor ORDER BY id DESC LIMIT 1")
+    outdoor = cursor.fetchone()
+
+    cursor.execute("SELECT humid, rainfall, temp, windspeed FROM project_weather_api ORDER BY id DESC LIMIT 1")
+    weather = cursor.fetchone()
+
+    cursor.execute("SELECT aqi FROM project_aqi_api ORDER BY id DESC LIMIT 1")
+    aqi = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+    now = datetime.now()
+
+    ts = now.strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Use cached singleton predictor (models loaded once)
+    return {"ts": ts, "pm10": round(lr_predictor.predict_pm10(outdoor["pm10"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+
+
+@app.get("/predicted_pm25_linear_regression")
+def get_predicted25_lr():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("SELECT temp_dht, pm25 FROM project_kidbright_outdoor ORDER BY id DESC LIMIT 1")
+    outdoor = cursor.fetchone()
+
+    cursor.execute("SELECT humid, rainfall, temp, windspeed FROM project_weather_api ORDER BY id DESC LIMIT 1")
+    weather = cursor.fetchone()
+
+    cursor.execute("SELECT aqi FROM project_aqi_api ORDER BY id DESC LIMIT 1")
+    aqi = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+    now = datetime.now()
+
+    ts = now.strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Use cached singleton predictor (models loaded once)
+    return {"ts": ts, "pm25": round(lr_predictor.predict_pm25(outdoor["pm25"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))}
+
+@app.get("/suggestion")
+def suggestion():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("SELECT temp_dht, pm25 , pm1, pm10 FROM project_kidbright_outdoor ORDER BY id DESC LIMIT 1")
+    outdoor = cursor.fetchone()
+
+    cursor.execute("SELECT humid, rainfall, temp, windspeed FROM project_weather_api ORDER BY id DESC LIMIT 1")
+    weather = cursor.fetchone()
+
+    cursor.execute("SELECT aqi FROM project_aqi_api ORDER BY id DESC LIMIT 1")
+    aqi = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+    now = datetime.now()
+
+    ts = now.strftime("%Y-%m-%d %H:%M:%S")
+    
+    indoor_pm1 = round(lr_predictor.predict_pm1(outdoor["pm1"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))
+    indoor_pm10 = round(lr_predictor.predict_pm10(outdoor["pm10"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))
+    indoor_pm125 = round(lr_predictor.predict_pm25(outdoor["pm25"], weather["windspeed"], aqi["aqi"], outdoor["temp_dht"], weather["humid"]))
+    
+    indoor_dust_list = [indoor_pm1, indoor_pm10, indoor_pm125]
+    outdoor_dust_list = [outdoor["pm1"], outdoor["pm10"], outdoor["pm25"]]
+    
+    return {"ts":ts ,"Suggestion":Suggest.suggest(indoor_dust_list, outdoor_dust_list)}
