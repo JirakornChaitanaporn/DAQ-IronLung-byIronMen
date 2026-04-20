@@ -17,14 +17,9 @@ def interpolate_sensor_data(rows: list[dict]) -> list[dict]:
     if not rows:
         return rows
     df = pd.DataFrame(rows)
-    for col in SENSOR_COLS:
-        if col in df.columns:
-            df[col] = df[col].replace(0, np.nan)
-    df[SENSOR_COLS] = (
-        df[[c for c in SENSOR_COLS if c in df.columns]]
-        .interpolate(method="linear", limit_direction="both")
-        .round(1)
-    )
+    cols = [c for c in SENSOR_COLS if c in df.columns]
+    df[cols] = df[cols].replace(0, np.nan)
+    df[cols] = df[cols].interpolate(method="linear", limit_direction="both").round(1)
     return df.to_dict(orient="records")
 
 pool = PooledDB(creator=pymysql,
