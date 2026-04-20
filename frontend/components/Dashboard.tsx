@@ -97,6 +97,10 @@ export default function Dashboard() {
     `${API_BASE}/outdoor`,
     (raw) => (Array.isArray(raw) ? (raw as SensorReading[]) : [])
   );
+  const weatherHistory = useResource<WeatherReading[]>(
+    `${API_BASE}/weather_api`,
+    (raw) => (Array.isArray(raw) ? (raw as WeatherReading[]) : [])
+  );
 
   return (
     <div className="space-y-4">
@@ -123,7 +127,7 @@ export default function Dashboard() {
         <WeatherCard state={weather} />
       </div>
 
-      <TrendChart indoor={indoorHistory} outdoor={outdoorHistory} />
+      <TrendChart indoor={indoorHistory} outdoor={outdoorHistory} weather={weatherHistory} />
     </div>
   );
 }

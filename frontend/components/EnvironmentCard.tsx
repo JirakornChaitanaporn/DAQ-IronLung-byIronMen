@@ -39,7 +39,7 @@ export default function EnvironmentCard({
   const d = state.data;
   const rows: Array<[string, string]> = [
     ["Temp", `${d.temp_dht}°C`],
-    ["Humidity", `${d.humidity}%`],
+    ["PM25", `${d.pm25}`],
     ["PM1", `${d.pm1}`],
     ["PM10", `${d.pm10}`],
   ];

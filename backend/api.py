@@ -296,10 +296,11 @@ def get_weather_api():
     cursor = conn.cursor(pymysql.cursors.DictCursor)
 
     cursor.execute("""
-        SELECT lat, lon, humid, rainfall, temp, windspeed
+        SELECT ts, lat, lon, humid, rainfall, temp, windspeed
         FROM project_weather_api
+        ORDER BY ts ASC
     """)
-    
+
     data = cursor.fetchall()
 
     cursor.close()
