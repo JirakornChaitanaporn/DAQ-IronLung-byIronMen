@@ -6,6 +6,7 @@ import EnvironmentCard from "./EnvironmentCard";
 import ApiCard from "./ApiCard";
 import TrendChart from "./TrendChart";
 import RecommendationBanner from "./RecommendationBanner";
+import PredictedIndoorCard, { PredictedIndoor } from "./PredictedIndoorCard";
 
 const API_BASE = "http://localhost:8000";
 
@@ -56,7 +57,6 @@ function useResource<T>(url: string, pick?: (raw: unknown) => T | null): Resourc
 
   useEffect(() => {
     let cancelled = false;
-    setState({ data: null, loading: true, error: null });
     fetch(url)
       .then((r) => {
         if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
@@ -71,16 +71,17 @@ function useResource<T>(url: string, pick?: (raw: unknown) => T | null): Resourc
         if (cancelled) return;
         setState({ data: null, loading: false, error: err.message });
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
+    return () => { cancelled = true; };
+  }, [url, pick]);
 
   return state;
 }
 
 const lastOf = <T,>(raw: unknown): T | null =>
   Array.isArray(raw) && raw.length ? (raw[raw.length - 1] as T) : null;
+
+const asArray = <T,>(raw: unknown): T[] =>
+  Array.isArray(raw) ? (raw as T[]) : [];
 
 export default function Dashboard() {
   const indoor = useResource<SensorReading>(`${API_BASE}/indoor_last_hour`, lastOf);
@@ -89,18 +90,10 @@ export default function Dashboard() {
   const weather = useResource<WeatherReading>(`${API_BASE}/weather_api`, lastOf);
   const suggestion = useResource<Suggestion>(`${API_BASE}/suggestion`);
 
-  const indoorHistory = useResource<SensorReading[]>(
-    `${API_BASE}/indoor`,
-    (raw) => (Array.isArray(raw) ? (raw as SensorReading[]) : [])
-  );
-  const outdoorHistory = useResource<SensorReading[]>(
-    `${API_BASE}/outdoor`,
-    (raw) => (Array.isArray(raw) ? (raw as SensorReading[]) : [])
-  );
-  const weatherHistory = useResource<WeatherReading[]>(
-    `${API_BASE}/weather_api`,
-    (raw) => (Array.isArray(raw) ? (raw as WeatherReading[]) : [])
-  );
+  const indoorHistory  = useResource<SensorReading[]>(`${API_BASE}/indoor`,      asArray);
+  const outdoorHistory = useResource<SensorReading[]>(`${API_BASE}/outdoor`,     asArray);
+  const weatherHistory = useResource<WeatherReading[]>(`${API_BASE}/weather_api`, asArray);
+  const predictedIndoor = useResource<PredictedIndoor>(`${API_BASE}/predicted_indoor_lr`);
 
   return (
     <div className="space-y-4">
@@ -125,6 +118,7 @@ export default function Dashboard() {
         <EnvironmentCard label="Indoor environment" state={indoor} />
         <EnvironmentCard label="Outdoor environment" state={outdoor} />
         <WeatherCard state={weather} />
+        <PredictedIndoorCard state={predictedIndoor} />
       </div>
 
       <TrendChart indoor={indoorHistory} outdoor={outdoorHistory} weather={weatherHistory} />
