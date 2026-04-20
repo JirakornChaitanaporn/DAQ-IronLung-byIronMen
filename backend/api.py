@@ -1,4 +1,6 @@
 import pymysql
+import pandas as pd
+import numpy as np
 from dbutils.pooled_db import PooledDB
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,6 +9,23 @@ from db_config import DB_HOST, DB_USER, DB_PASSWD, DB_NAME
 from datetime import datetime, date
 from predict import IndoorPredictor, IndoorPredictorLR
 from suggestion import Suggest
+
+SENSOR_COLS = ["pm1", "pm25", "pm10", "temp_dht", "humidity"]
+
+def interpolate_sensor_data(rows: list[dict]) -> list[dict]:
+    """Replace zero readings with NaN then linearly interpolate to fill gaps."""
+    if not rows:
+        return rows
+    df = pd.DataFrame(rows)
+    for col in SENSOR_COLS:
+        if col in df.columns:
+            df[col] = df[col].replace(0, np.nan)
+    df[SENSOR_COLS] = (
+        df[[c for c in SENSOR_COLS if c in df.columns]]
+        .interpolate(method="linear", limit_direction="both")
+        .round(1)
+    )
+    return df.to_dict(orient="records")
 
 pool = PooledDB(creator=pymysql,
                 host=DB_HOST,
@@ -143,6 +162,25 @@ def get_kidbright_outdoor_data():
     cursor.execute("""
         SELECT id, ts, temp_dht, pm1, pm25, pm10
         FROM project_kidbright_outdoor
+        ORDER BY ts ASC
+    """)
+
+    data = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return interpolate_sensor_data(data)
+
+@app.get("/outdoor_last_hour")
+def get_kidbright_outdoor_last_hour():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("""
+        SELECT id, ts, temp_dht, pm1, pm25, pm10
+        FROM project_kidbright_outdoor
+        WHERE ts >= NOW() - INTERVAL 1 HOUR
+        ORDER BY ts ASC;
     """)
 
     data = cursor.fetchall()
@@ -159,7 +197,8 @@ def get_kidbright_outdoor_last_24hour():
     cursor.execute("""
         SELECT id, ts, temp_dht, pm1, pm25, pm10
         FROM project_kidbright_outdoor
-        WHERE ts >= NOW() - INTERVAL HOUR;
+        WHERE ts >= NOW() - INTERVAL 24 HOUR
+        ORDER BY ts ASC;
     """)
 
     data = cursor.fetchall()
@@ -177,8 +216,27 @@ def get_kidbright_indoor_data():
     cursor.execute("""
         SELECT id, ts, temp_dht, pm1, pm25, pm10
         FROM project_kidbright_indoor
+        ORDER BY ts ASC
     """)
-    
+
+    data = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return interpolate_sensor_data(data)
+
+@app.get("/indoor_last_hour")
+def get_kidbright_indoor_last_hour():
+    conn = pool.connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("""
+        SELECT id, ts, temp_dht, pm1, pm25, pm10
+        FROM project_kidbright_indoor
+        WHERE ts >= NOW() - INTERVAL 1 HOUR
+        ORDER BY ts ASC;
+    """)
+
     data = cursor.fetchall()
 
     cursor.close()
@@ -193,9 +251,10 @@ def get_kidbright_indoor_last_24hour():
     cursor.execute("""
         SELECT id, ts, temp_dht, pm1, pm25, pm10
         FROM project_kidbright_indoor
-        WHERE ts >= NOW() - INTERVAL 24 HOUR;
+        WHERE ts >= NOW() - INTERVAL 24 HOUR
+        ORDER BY ts ASC;
     """)
-    
+
     data = cursor.fetchall()
 
     cursor.close()

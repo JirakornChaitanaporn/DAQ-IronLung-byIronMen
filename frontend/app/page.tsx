@@ -2,6 +2,7 @@ import Navbar from "@/components/Navbar";
 import LiveSensorPanels from "@/components/LiveSensorPanels";
 import DataCharts from "@/components/DataCharts";
 import LiveWidgets from "@/components/LiveWidgets";
+import SuggestionCard from "@/components/SuggestionCard";
 
 export default function Home() {
   return (
@@ -31,7 +32,7 @@ export default function Home() {
         </div>
 
         {/* Recommendation banner */}
-        {/* <Recommendation indoorPm25={indoorSensor.pm25} outdoorPm25={outdoorSensor.pm25} /> */}
+        <SuggestionCard />
       </main>
     </div>
   );
