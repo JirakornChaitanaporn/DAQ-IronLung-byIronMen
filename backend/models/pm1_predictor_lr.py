@@ -88,6 +88,3 @@ def predict(pm1_outdoor: float, windspeed: float, aqi: float, temp_outdoor: floa
 if __name__ == "__main__":
     train()
 
-
-if __name__ == "__main__":
-    train()
