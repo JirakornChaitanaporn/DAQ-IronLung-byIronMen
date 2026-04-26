@@ -1,5 +1,7 @@
 # Smart Lung — IoT Indoor Air Quality Monitor
 
+*Note for DA please go to backend then preprocess to see EDA and Merging table. Also Please go to data for our data for model.
+
 An IoT system that measures and predicts indoor dust density (PM2.5) by combining real-time sensor readings with outdoor air quality and weather data.
 
 **Team IronMen**
